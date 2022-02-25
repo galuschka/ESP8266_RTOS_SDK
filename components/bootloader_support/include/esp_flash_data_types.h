@@ -29,9 +29,20 @@ extern "C"
    Size of 32 bytes is friendly to flash encryption */
 typedef struct {
     uint32_t ota_seq;
-    uint8_t  seq_label[24];
+    uint8_t  seq_label[20];
+    uint32_t test_stage;
     uint32_t crc; /* CRC32 of ota_seq field only */
 } esp_ota_select_entry_t;
+
+enum OTA_TEST_STAGE {
+    OTA_TEST_STAGE_TO_TEST = 0x7f7f7f7f,  /* initial stage after flashing: image has to be tested
+                                          ** when bootloader reads 7f, it clears 40 (-> 3f) and performs the test */
+    OTA_TEST_STAGE_TESTING = 0x3f3f3f3f,  /* image has been used by bootloader and it is being tested
+                                          ** when bootloader reads 3f, it clears 20 (-> 1f) and uses another image
+                                          ** when app gets confirmation, it clears 10 (-> 2f) */
+    OTA_TEST_STAGE_FAILED  = 0x1f1f1f1f,  /* test failed - image must **not** be used on further boots */
+    OTA_TEST_STAGE_PASSED  = 0x2f2f2f2f,  /* test passed (same as any other value than 7f, 3f, or 1f) */
+};
 
 
 typedef struct {
