@@ -24,6 +24,7 @@ set(srcs
     "lwip/src/api/tcpip.c"
     "lwip/src/apps/sntp/sntp.c"
     "lwip/src/apps/netbiosns/netbiosns.c"
+    "lwip/src/apps/mqtt/mqtt.c"
     "lwip/src/core/def.c"
     "lwip/src/core/dns.c"
     "lwip/src/core/inet_chksum.c"
