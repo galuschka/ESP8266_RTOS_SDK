@@ -378,17 +378,13 @@ static esp_err_t esp_rewrite_ota_data(esp_partition_subtype_t subtype)
 
 
 #ifdef CONFIG_IDF_TARGET_ESP8266
-        ret = spi_flash_read(find_partition->address, &s_ota_select[0], sizeof(ota_select));
+    for (uint8_t i = 0; i < 2; ++i) {
+        ret = spi_flash_read(find_partition->address + (i * SPI_FLASH_SEC_SIZE), &s_ota_select[1], sizeof(ota_select));
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "read failed");
             return ret;
         }
-
-        ret = spi_flash_read(find_partition->address + 0x1000, &s_ota_select[1], sizeof(ota_select));
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "read failed");
-            return ret;
-        }
+    }
 #endif
     uint8_t idx = 0;
     uint8_t valid = 0;
