@@ -658,7 +658,9 @@ int bootloader_utility_get_selected_boot_partition(const bootloader_state_t *bs)
             if (bootloader_common_ota_select_valid(&s[i])) {
                 uint8_t const lz = __builtin_clz(s[i].test_stage);
                 bool const isMask = ((s[i].test_stage + 1) == (0x80000000 >> (lz - 1)));
-                if (!  (((lz & 3) != OTA_TEST_STAGE_LZ_MOD4_FAILED)  && isMask)) {
+                ESP_LOGD( TAG, "ota[%d] crc valid, test stage clz(%08x) = %d, %svalid mask",
+                                     i,                  s[i].test_stage, lz, isMask ? "" : "in" );
+                if (!  (((lz & 3) == OTA_TEST_STAGE_LZ_MOD4_FAILED)  && isMask)) {
                     if (((lz & 3) == OTA_TEST_STAGE_LZ_MOD4_TESTING) && isMask) {
                         // test failed, since 2nd boot after "to test"
                         s[i].test_stage >>= 1;  // one more leading zero -> (lz & 3) == OTA_TEST_STAGE_LZ_MOD4_FAILED

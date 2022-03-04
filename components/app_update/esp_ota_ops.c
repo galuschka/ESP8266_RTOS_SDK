@@ -379,7 +379,7 @@ static esp_err_t esp_rewrite_ota_data(esp_partition_subtype_t subtype)
 
 #ifdef CONFIG_IDF_TARGET_ESP8266
     for (uint8_t i = 0; i < 2; ++i) {
-        ret = spi_flash_read(find_partition->address + (i * SPI_FLASH_SEC_SIZE), &s_ota_select[1], sizeof(ota_select));
+        ret = spi_flash_read(find_partition->address + (i * SPI_FLASH_SEC_SIZE), &s_ota_select[i], sizeof(ota_select));
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "read failed");
             return ret;
@@ -393,6 +393,8 @@ static esp_err_t esp_rewrite_ota_data(esp_partition_subtype_t subtype)
         if (ota_select_valid(&s_ota_select[i])) {
             uint8_t const lz = __builtin_clz(s_ota_select[i].test_stage);
             bool const isMask = ((s_ota_select[i].test_stage + 1) == (0x80000000 >> (lz - 1)));
+            ESP_LOGD( TAG, "ota[%d] crc valid, test stage clz(%08x) = %d, %svalid mask",
+                                 i,       s_ota_select[i].test_stage, lz, isMask ? "" : "in" );
             if (((lz & 3) != OTA_TEST_STAGE_LZ_MOD4_FAILED) || ! isMask) {
                 valid |= 1 << i;
                 if (curr < s_ota_select[i].ota_seq) {
