@@ -30,18 +30,18 @@ extern "C"
 typedef struct {
     uint32_t ota_seq;
     uint8_t  seq_label[20];
-    uint32_t test_stage;
+    uint32_t test_stage;  // starting at 7fffffff (1 leading zero), bit by bit gets cleared
     uint32_t crc; /* CRC32 of ota_seq field only */
 } esp_ota_select_entry_t;
 
-enum OTA_TEST_STAGE {
-    OTA_TEST_STAGE_TO_TEST = 0x7f7f7f7f,  /* initial stage after flashing: image has to be tested
-                                          ** when bootloader reads 7f, it clears 40 (-> 3f) and performs the test */
-    OTA_TEST_STAGE_TESTING = 0x3f3f3f3f,  /* image has been used by bootloader and it is being tested
-                                          ** when bootloader reads 3f, it clears 20 (-> 1f) and uses another image
-                                          ** when app gets confirmation, it clears 10 (-> 2f) */
-    OTA_TEST_STAGE_FAILED  = 0x1f1f1f1f,  /* test failed - image must **not** be used on further boots */
-    OTA_TEST_STAGE_PASSED  = 0x2f2f2f2f,  /* test passed (same as any other value than 7f, 3f, or 1f) */
+enum OTA_TEST_STAGE_LZ_MOD4 {  // leading zeros % 4 --> OTA_TEST_STAGE_LZ_MOD4
+    OTA_TEST_STAGE_LZ_MOD4_TO_TEST = 1,  /* 7f.. initial stage after flashing: image has to be tested
+                                         **      when bootloader reads 7f, it clears 40 (-> 3f) and performs the test */
+    OTA_TEST_STAGE_LZ_MOD4_TESTING = 2,  /* 3f.. image has been used by bootloader and it is being tested
+                                         **      when bootloader reads 3f, it clears 20 (-> 1f) and uses another image
+                                         **      when app gets confirmation, it clears 30 (-> 0f) */
+    OTA_TEST_STAGE_LZ_MOD4_FAILED  = 3,  /* 1f.. test failed - image must **not** be used on further boots */
+    OTA_TEST_STAGE_LZ_MOD4_PASSED  = 0,  /* 0f.. test passed (or not done) */
 };
 
 

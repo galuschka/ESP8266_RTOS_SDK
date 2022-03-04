@@ -311,7 +311,7 @@ static esp_err_t rewrite_ota_seq(uint32_t seq, uint8_t sec_id, const esp_partiti
         }
         s->ota_seq = seq;
         s->crc = ota_select_crc(s);
-        s->test_stage = OTA_TEST_STAGE_TO_TEST;
+        s->test_stage = 0xffffffff >> OTA_TEST_STAGE_LZ_MOD4_TO_TEST;
         ret = esp_partition_erase_range(ota_data_partition, sec_id * SPI_FLASH_SEC_SIZE, SPI_FLASH_SEC_SIZE);
         if (ret != ESP_OK) {
             return ret;
@@ -390,11 +390,15 @@ static esp_err_t esp_rewrite_ota_data(esp_partition_subtype_t subtype)
     uint8_t valid = 0;
     uint32_t curr = 0;
     for (uint8_t i = 0; i < 2; ++i) {
-        if (ota_select_valid(&s_ota_select[i]) && (s_ota_select[i].test_stage != OTA_TEST_STAGE_FAILED)) {
-            valid |= 1 << i;
-            if (curr < s_ota_select[i].ota_seq) {
-                curr = s_ota_select[i].ota_seq;
-                idx = i;
+        if (ota_select_valid(&s_ota_select[i])) {
+            uint8_t const lz = __builtin_clz(s_ota_select[i].test_stage);
+            bool const isMask = ((s_ota_select[i].test_stage + 1) == (0x80000000 >> (lz - 1)));
+            if (((lz & 3) != OTA_TEST_STAGE_LZ_MOD4_FAILED) || ! isMask) {
+                valid |= 1 << i;
+                if (curr < s_ota_select[i].ota_seq) {
+                    curr = s_ota_select[i].ota_seq;
+                    idx = i;
+                }
             }
         }
     }
@@ -532,10 +536,14 @@ const esp_partition_t *esp_ota_get_boot_partition(void)
         ota_select * s = &s_ota_select[i];
         if (s->ota_seq != 0xFFFFFFFF) {
             notff |= 1 << i;
-            if (ota_select_valid(s) && (s->test_stage != OTA_TEST_STAGE_FAILED)) {
-                valid |= 1 << i;
-                if (max < s->ota_seq)
-                    max = s->ota_seq;
+            if (ota_select_valid(s)) {
+                uint8_t const lz = __builtin_clz(s->test_stage);
+                bool const isMask = ((s->test_stage + 1) == (0x80000000 >> (lz - 1)));
+                if (((lz & 3) != OTA_TEST_STAGE_LZ_MOD4_FAILED) || ! isMask) {
+                    valid |= 1 << i;
+                    if (max < s->ota_seq)
+                        max = s->ota_seq;
+                }
             }
         }
     }

@@ -655,20 +655,24 @@ int bootloader_utility_get_selected_boot_partition(const bootloader_state_t *bs)
     for (uint8_t i = 0; i < 2; ++i) {
         if (s[i].ota_seq != UINT32_MAX) {
             ota_notff |= 1 << i;
-            if (bootloader_common_ota_select_valid(&s[i]) && (s[i].test_stage != OTA_TEST_STAGE_FAILED)) {
-                if (s[i].test_stage == OTA_TEST_STAGE_TESTING) {
-                    // test failed, since 2nd boot after "to test"
-                    s[i].test_stage = OTA_TEST_STAGE_FAILED;
-                    bootloader_flash_write( bs->ota_info.offset + ((int) i * SPI_SEC_SIZE) + offsetof(esp_ota_select_entry_t,test_stage),
-                                            &s[i].test_stage,
-                                            sizeof(s[i].test_stage), false);
-                    ESP_LOGW(TAG, "previously loaded boot image still in testing mode -> marked as failed");
-                    continue;
-                }
-                ota_valid |= 1 << i;
-                if (ota_seq < s[i].ota_seq) {
-                    ota_seq = s[i].ota_seq;
-                    ota_idx = i;
+            if (bootloader_common_ota_select_valid(&s[i])) {
+                uint8_t const lz = __builtin_clz(s[i].test_stage);
+                bool const isMask = ((s[i].test_stage + 1) == (0x80000000 >> (lz - 1)));
+                if (!  (((lz & 3) != OTA_TEST_STAGE_LZ_MOD4_FAILED)  && isMask)) {
+                    if (((lz & 3) == OTA_TEST_STAGE_LZ_MOD4_TESTING) && isMask) {
+                        // test failed, since 2nd boot after "to test"
+                        s[i].test_stage >>= 1;  // one more leading zero -> (lz & 3) == OTA_TEST_STAGE_LZ_MOD4_FAILED
+                        bootloader_flash_write( bs->ota_info.offset + ((int) i * SPI_SEC_SIZE) + offsetof(esp_ota_select_entry_t,test_stage),
+                                                &s[i].test_stage,
+                                                sizeof(s[i].test_stage), false);
+                        ESP_LOGW(TAG, "previously loaded boot image still in testing mode -> marked as failed");
+                        continue;
+                    }
+                    ota_valid |= 1 << i;
+                    if (ota_seq < s[i].ota_seq) {
+                        ota_seq = s[i].ota_seq;
+                        ota_idx = i;
+                    }
                 }
             }
         }
@@ -690,8 +694,10 @@ int bootloader_utility_get_selected_boot_partition(const bootloader_state_t *bs)
         case 2: ota_msg = "Only OTA sequence B is"; break;
         case 3: ota_msg = "Both OTA values are"; break;
     }
-    if (s[ota_idx].test_stage == OTA_TEST_STAGE_TO_TEST) {
-        s[ota_idx].test_stage = OTA_TEST_STAGE_TESTING;
+    uint8_t const lz = __builtin_clz(s[ota_idx].test_stage);
+    bool const isMask = ((s[ota_idx].test_stage + 1) == (0x80000000 >> (lz - 1)));
+    if (((lz & 3) == OTA_TEST_STAGE_LZ_MOD4_TO_TEST) && isMask) {
+        s[ota_idx].test_stage >>= 1;  // one more leading zero -> (lz & 3) == OTA_TEST_STAGE_LZ_MOD4_TESTING
         bootloader_flash_write( bs->ota_info.offset + ((int) ota_idx * SPI_SEC_SIZE) + offsetof(esp_ota_select_entry_t,test_stage),
                                 &s[ota_idx].test_stage,
                                 sizeof(s[ota_idx].test_stage), false);
