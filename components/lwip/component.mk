@@ -15,6 +15,7 @@ COMPONENT_SRCDIRS := \
 	apps/ping \
 	apps/sntp \
 	lwip/src/api \
+	lwip/src/apps/mqtt \
 	lwip/src/apps/sntp \
 	lwip/src/apps/netbiosns \
 	lwip/src/core \
